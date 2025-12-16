@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 
@@ -67,15 +66,6 @@ func isSupported(protocol string, protocols []string) bool {
 	return false
 }
 
-func preferXray(protocol string) bool {
-	switch protocol {
-	case "anytls", "hysteria2", "tuic":
-		return true
-	default:
-		return false
-	}
-}
-
 func (s *Selector) AddNode(tag string, info *panel.NodeInfo, option *conf.Options) error {
 	var core Core
 	if len(option.CoreName) > 0 {
@@ -85,31 +75,15 @@ func (s *Selector) AddNode(tag string, info *panel.NodeInfo, option *conf.Option
 		}
 	} else {
 		// use type to select core
-		if preferXray(info.Type) {
-			for name, c := range s.cores {
-				if name == "xray" || c.Type() == "xray" {
-					if len(option.Core) != 0 && option.Core != c.Type() {
-						break
-					}
-					if isSupported(info.Type, c.Protocols()) {
-						core = c
-						log.Printf("node %s with protocol %s assigned to xray core", tag, info.Type)
-					}
-					break
-				}
-			}
-		}
-		if core == nil {
-			for _, c := range s.cores {
-				if len(option.Core) == 0 {
-					if !isSupported(info.Type, c.Protocols()) {
-						continue
-					}
-				} else if option.Core != c.Type() {
+		for _, c := range s.cores {
+			if len(option.Core) == 0 {
+				if !isSupported(info.Type, c.Protocols()) {
 					continue
 				}
-				core = c
+			} else if option.Core != c.Type() {
+				continue
 			}
+			core = c
 		}
 	}
 	if core == nil {

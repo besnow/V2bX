@@ -112,12 +112,6 @@ func (c *Xray) AddUsers(p *vCore.AddUsersParams) (added int, err error) {
 			p.Users,
 			p.Shadowsocks.Cipher,
 			p.Shadowsocks.ServerKey)
-	case "anytls":
-		users = buildAnyTLSUsers(p.Tag, p.Users)
-	case "hysteria2":
-		users = buildHysteria2Users(p.Tag, p.Users)
-	case "tuic":
-		users = buildTuicUsers(p.Tag, p.Users)
 	default:
 		return 0, fmt.Errorf("unsupported node type: %s", p.NodeInfo.Type)
 	}

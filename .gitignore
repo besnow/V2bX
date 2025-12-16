@@ -15,4 +15,3 @@ example/cert
 output/*
 .idea/*
 newV2bX.sh
-quic_singbox.sh
