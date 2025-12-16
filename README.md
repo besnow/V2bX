@@ -55,9 +55,9 @@ wget -N https://raw.githubusercontent.com/wyx2685/V2bX-script/master/install.sh 
 [手动安装教程](https://v2bx.v-50.me/v2bx/v2bx-xia-zai-he-an-zhuang/install/manual)
 
 ## 构建
-单核版使用魔改 Xray-core（支持 vmess/vless/trojan/shadowsocks/anytls/hysteria2/tuic），需要 Go 1.25 及以上版本，并在构建/测试时启用 `GOEXPERIMENT=jsonv2`（如需 `arenas` 可写作 `GOEXPERIMENT=arenas,jsonv2`）。
 ``` bash
-GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "xray with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
+# 通过-tags选项指定要编译的内核， 可选 xray， sing, hysteria2
+GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
 ```
 
 ## 配置文件及详细使用教程
