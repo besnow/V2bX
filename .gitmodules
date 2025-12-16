@@ -1,3 +1,6 @@
-[submodule "sing-box_mod"]
-	path = sing-box_mod
-	url = https://github.com/wyx2685/sing-box_mod.git
+[submodule "third_party/xray-core"]
+path = third_party/xray-core
+url = https://github.com/besnow/Xray-core
+[submodule "third_party/sing-box_mod"]
+path = third_party/sing-box_mod
+url = https://github.com/wyx2685/sing-box_mod

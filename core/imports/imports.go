@@ -1,1 +1,6 @@
 package imports
+
+import (
+	_ "github.com/InazumaV/V2bX/core/sing"
+	_ "github.com/InazumaV/V2bX/core/xray"
+)

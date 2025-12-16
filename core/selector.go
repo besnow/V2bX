@@ -12,11 +12,13 @@ import (
 
 type Selector struct {
 	cores map[string]Core
+	types map[string]Core
 	nodes sync.Map
 }
 
 func NewSelector(c []conf.CoreConfig) (Core, error) {
 	cs := make(map[string]Core, len(c))
+	types := make(map[string]Core, len(c))
 	for _, t := range c {
 		f, ok := cores[strings.ToLower(t.Type)]
 		if !ok {
@@ -31,9 +33,11 @@ func NewSelector(c []conf.CoreConfig) (Core, error) {
 		} else {
 			cs[t.Name] = core1
 		}
+		types[core1.Type()] = core1
 	}
 	return &Selector{
 		cores: cs,
+		types: types,
 	}, nil
 }
 
@@ -58,8 +62,9 @@ func (s *Selector) Close() error {
 }
 
 func isSupported(protocol string, protocols []string) bool {
+	protocol = strings.ToLower(protocol)
 	for i := range protocols {
-		if protocol == protocols[i] {
+		if protocol == strings.ToLower(protocols[i]) {
 			return true
 		}
 	}
@@ -67,27 +72,9 @@ func isSupported(protocol string, protocols []string) bool {
 }
 
 func (s *Selector) AddNode(tag string, info *panel.NodeInfo, option *conf.Options) error {
-	var core Core
-	if len(option.CoreName) > 0 {
-		// use name to select core
-		if c, ok := s.cores[option.CoreName]; ok {
-			core = c
-		}
-	} else {
-		// use type to select core
-		for _, c := range s.cores {
-			if len(option.Core) == 0 {
-				if !isSupported(info.Type, c.Protocols()) {
-					continue
-				}
-			} else if option.Core != c.Type() {
-				continue
-			}
-			core = c
-		}
-	}
-	if core == nil {
-		return errors.New("the node type is not support")
+	core, err := s.selectCore(info, option)
+	if err != nil {
+		return err
 	}
 	if len(option.Core) == 0 {
 		option.Core = core.Type()
@@ -97,12 +84,60 @@ func (s *Selector) AddNode(tag string, info *panel.NodeInfo, option *conf.Option
 		}
 		option.RawOptions = nil
 	}
-	err := core.AddNode(tag, info, option)
+	err = core.AddNode(tag, info, option)
 	if err != nil {
 		return err
 	}
 	s.nodes.Store(tag, core)
 	return nil
+}
+
+func (s *Selector) selectCore(info *panel.NodeInfo, option *conf.Options) (Core, error) {
+	if len(option.CoreName) > 0 {
+		if c, ok := s.cores[option.CoreName]; ok {
+			return c, nil
+		}
+		return nil, fmt.Errorf("unknown core name: %s", option.CoreName)
+	}
+
+	requested := strings.ToLower(option.Core)
+	switch requested {
+	case "", "auto", "xray_prefer":
+		requested = ""
+	default:
+		if c, ok := s.types[requested]; ok {
+			if !isSupported(info.Type, c.Protocols()) {
+				return nil, fmt.Errorf("core %s does not support protocol %s", requested, info.Type)
+			}
+			return c, nil
+		}
+		if c, ok := s.cores[option.Core]; ok {
+			if !isSupported(info.Type, c.Protocols()) {
+				return nil, fmt.Errorf("core %s does not support protocol %s", option.Core, info.Type)
+			}
+			return c, nil
+		}
+		return nil, fmt.Errorf("unknown core type: %s", option.Core)
+	}
+
+	preferred := "xray"
+	switch strings.ToLower(info.Type) {
+	case "hysteria", "hysteria2", "tuic", "anytls":
+		preferred = "sing"
+	}
+
+	if c, ok := s.types[preferred]; ok {
+		if isSupported(info.Type, c.Protocols()) {
+			return c, nil
+		}
+	}
+
+	for _, c := range s.types {
+		if isSupported(info.Type, c.Protocols()) {
+			return c, nil
+		}
+	}
+	return nil, errors.New("the node type is not support")
 }
 
 func (s *Selector) DelNode(tag string) error {
@@ -143,8 +178,8 @@ func (s *Selector) DelUsers(users []panel.UserInfo, tag string, info *panel.Node
 
 func (s *Selector) Protocols() []string {
 	protocols := make([]string, 0)
-	for i := range s.cores {
-		protocols = append(protocols, s.cores[i].Protocols()...)
+	for i := range s.types {
+		protocols = append(protocols, s.types[i].Protocols()...)
 	}
 	return protocols
 }

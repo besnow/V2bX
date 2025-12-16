@@ -5,6 +5,15 @@
   },
   "Cores": [
     {
+      "Type": "xray",
+      "Log": {
+        "Level": "warning",
+        "AccessPath": "",
+        "ErrorPath": ""
+      },
+      "AssetPath": "/etc/V2bX/"
+    },
+    {
       "Type": "sing",
       "Log": {
         "Level": "info",
@@ -20,7 +29,7 @@
   ],
   "Nodes": [
     {
-      "Core": "sing",
+      "Core": "auto",
       "ApiHost": "http://127.0.0.1",
       "ApiKey": "test",
       "NodeID": 33,
@@ -36,6 +45,31 @@
         "CertMode": "self",
         "RejectUnknownSni": false,
         "CertDomain": "example.com",
+        "CertFile": "/etc/V2bX/fullchain.cer",
+        "KeyFile": "/etc/V2bX/cert.key",
+        "Provider": "cloudflare",
+        "DNSEnv": {
+          "EnvName": "env1"
+        }
+      }
+    },
+    {
+      "Core": "auto",
+      "ApiHost": "http://127.0.0.1",
+      "ApiKey": "test",
+      "NodeID": 34,
+      "NodeType": "hysteria2",
+      "Timeout": 30,
+      "ListenIP": "0.0.0.0",
+      "SendIP": "0.0.0.0",
+      "DeviceOnlineMinTraffic": 200,
+      "MinReportTraffic": 0,
+      "TCPFastOpen": false,
+      "SniffEnabled": true,
+      "CertConfig": {
+        "CertMode": "self",
+        "RejectUnknownSni": false,
+        "CertDomain": "hysteria.example.com",
         "CertFile": "/etc/V2bX/fullchain.cer",
         "KeyFile": "/etc/V2bX/cert.key",
         "Provider": "cloudflare",
