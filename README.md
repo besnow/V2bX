@@ -3,15 +3,15 @@
 [![](https://img.shields.io/badge/TgChat-UnOfficialV2Board%E4%BA%A4%E6%B5%81%E7%BE%A4-green)](https://t.me/unofficialV2board)
 [![](https://img.shields.io/badge/TgChat-YuzukiProjects%E4%BA%A4%E6%B5%81%E7%BE%A4-blue)](https://t.me/YuzukiProjects)
 
-A V2board node server based on multi core, modified from XrayR.  
-一个基于多种内核的V2board节点服务端，修改自XrayR，支持V2ay,Trojan,Shadowsocks协议。
+A V2board node server based on Xray core, modified from XrayR.<br>
+一个基于 Xray core 的 V2board 节点服务端，修改自 XrayR，支持 Vmess/Vless、Trojan、Shadowsocks 等 Xray 能力。
 
 **注意： 本项目需要搭配[修改版V2board](https://github.com/wyx2685/v2board)**
 
 ## 特点
 
 * 永久开源且免费。
-* 支持Vmess/Vless, Trojan， Shadowsocks, Hysteria1/2多种协议。
+* xray-only 版本支持 Xray core 提供的 Vmess/Vless、Trojan、Shadowsocks 等协议能力。
 * 支持Vless和XTLS等新特性。
 * 支持单实例对接多节点，无需重复启动。
 * 支持限制在线IP。
@@ -19,23 +19,23 @@ A V2board node server based on multi core, modified from XrayR.
 * 支持节点端口级别、用户级别限速。
 * 配置简单明了。
 * 修改配置自动重启实例。
-* 支持多种内核，易扩展。
-* 支持条件编译，可仅编译需要的内核。
+* xray-only：仅内置 Xray core，不再编译 sing-box / hysteria2 独立 core。
+* 保留 V2Board API 对接、用户同步、流量上报、在线 IP/在线用户上报等节点逻辑。
 
 ## 功能介绍
 
-| 功能        | v2ray | trojan | shadowsocks | hysteria1/2 |
-|-----------|-------|--------|-------------|----------|
-| 自动申请tls证书 | √     | √      | √           | √        |
-| 自动续签tls证书 | √     | √      | √           | √        |
-| 在线人数统计    | √     | √      | √           | √        |
-| 审计规则      | √     | √      | √           | √         |
-| 自定义DNS    | √     | √      | √           | √        |
-| 在线IP数限制   | √     | √      | √           | √        |
-| 连接数限制     | √     | √      | √           | √         |
-| 跨节点IP数限制  |√      |√       |√            |√          |
-| 按照用户限速    | √     | √      | √           | √         |
-| 动态限速(未测试) | √     | √      | √           | √         |
+| 功能 | vmess/vless | trojan | shadowsocks |
+|------|-------------|--------|-------------|
+| 自动申请 tls 证书 | √ | √ | √ |
+| 自动续签 tls 证书 | √ | √ | √ |
+| 在线人数统计 | √ | √ | √ |
+| 审计规则 | √ | √ | √ |
+| 自定义 DNS | √ | √ | √ |
+| 在线 IP 数限制 | √ | √ | √ |
+| 连接数限制 | √ | √ | √ |
+| 跨节点 IP 数限制 | √ | √ | √ |
+| 按照用户限速 | √ | √ | √ |
+| 动态限速(未测试) | √ | √ | √ |
 
 ## TODO
 
@@ -56,8 +56,8 @@ wget -N https://raw.githubusercontent.com/wyx2685/V2bX-script/master/install.sh 
 
 ## 构建
 ``` bash
-# 通过-tags选项指定要编译的内核， 可选 xray， sing, hysteria2
-GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
+# xray-only 版本默认只包含 xray core；tags 仅用于启用 Xray/ACME 相关能力
+go build -v -o build_assets/V2bX -tags "with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
 ```
 
 ## 配置文件及详细使用教程
@@ -82,7 +82,6 @@ GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 
 * [VNet-V2ray](https://github.com/ProxyPanel/VNet-V2ray)
 * [Air-Universe](https://github.com/crossfw/Air-Universe)
 * [XrayR](https://github.com/XrayR/XrayR)
-* [sing-box](https://github.com/SagerNet/sing-box)
 
 ## Stars 增长记录
 

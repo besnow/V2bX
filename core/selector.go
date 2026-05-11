@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/InazumaV/V2bX/api/panel"
@@ -18,9 +17,9 @@ type Selector struct {
 func NewSelector(c []conf.CoreConfig) (Core, error) {
 	cs := make(map[string]Core, len(c))
 	for _, t := range c {
-		f, ok := cores[strings.ToLower(t.Type)]
+		f, ok := cores[normalizeCoreType(t.Type)]
 		if !ok {
-			return nil, errors.New("unknown core type: " + t.Type)
+			return nil, unsupportedCoreError(t.Type)
 		}
 		core1, err := f(&t)
 		if err != nil {
@@ -67,11 +66,16 @@ func isSupported(protocol string, protocols []string) bool {
 }
 
 func (s *Selector) AddNode(tag string, info *panel.NodeInfo, option *conf.Options) error {
+	if option.Core != "" && normalizeCoreType(option.Core) != "xray" {
+		return unsupportedCoreError(option.Core)
+	}
 	var core Core
 	if len(option.CoreName) > 0 {
 		// use name to select core
 		if c, ok := s.cores[option.CoreName]; ok {
 			core = c
+		} else {
+			return fmt.Errorf("core name %q is not configured; this xray-only build only runs configured xray cores", option.CoreName)
 		}
 	} else {
 		// use type to select core
@@ -80,7 +84,7 @@ func (s *Selector) AddNode(tag string, info *panel.NodeInfo, option *conf.Option
 				if !isSupported(info.Type, c.Protocols()) {
 					continue
 				}
-			} else if option.Core != c.Type() {
+			} else if normalizeCoreType(option.Core) != c.Type() {
 				continue
 			}
 			core = c
