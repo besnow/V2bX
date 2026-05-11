@@ -1,10 +1,10 @@
 package panel
 
 import (
-	"fmt"
-	"strings"
-
 	"encoding/json"
+	"fmt"
+	"io"
+	"strings"
 
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -56,13 +56,76 @@ func (c *Client) GetUserList() ([]UserInfo, error) {
 			return nil, fmt.Errorf("decode user list error: %w", err)
 		}
 	} else {
-		decoder := json.NewDecoder(r.RawResponse.Body)
-		if err := decoder.Decode(userlist); err != nil {
+		decoded, err := decodeUserListJSON(r.RawResponse.Body)
+		if err != nil {
 			return nil, fmt.Errorf("decode user list error: %w", err)
 		}
+		userlist = decoded
 	}
 	c.userEtag = r.Header().Get("ETag")
 	return userlist.Users, nil
+}
+
+func decodeUserListJSON(r io.Reader) (*UserListBody, error) {
+	decoder := json.NewDecoder(r)
+	users, ok, err := findUsersArray(decoder)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf(`expected "users" array`)
+	}
+	return &UserListBody{Users: users}, nil
+}
+
+func findUsersArray(decoder *json.Decoder) ([]UserInfo, bool, error) {
+	tok, err := decoder.Token()
+	if err != nil {
+		return nil, false, err
+	}
+
+	delim, ok := tok.(json.Delim)
+	if !ok {
+		return nil, false, nil
+	}
+
+	switch delim {
+	case '{':
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return nil, false, err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return nil, false, fmt.Errorf("expected object key, got %T", keyToken)
+			}
+			if key == "users" {
+				var users []UserInfo
+				if err := decoder.Decode(&users); err != nil {
+					return nil, false, err
+				}
+				return users, true, nil
+			}
+			users, found, err := findUsersArray(decoder)
+			if err != nil || found {
+				return users, found, err
+			}
+		}
+		_, err = decoder.Token()
+		return nil, false, err
+	case '[':
+		for decoder.More() {
+			users, found, err := findUsersArray(decoder)
+			if err != nil || found {
+				return users, found, err
+			}
+		}
+		_, err = decoder.Token()
+		return nil, false, err
+	default:
+		return nil, false, nil
+	}
 }
 
 // GetUserAlive will fetch the alive_ip count for users
