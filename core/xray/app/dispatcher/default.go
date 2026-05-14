@@ -237,9 +237,53 @@ func (d *DefaultDispatcher) getLink(ctx context.Context, network net.Network) (*
 	return inboundLink, outboundLink, limit, nil
 }
 
-func (d *DefaultDispatcher) shouldOverride(ctx context.Context, result SniffResult, request session.SniffingRequest, destination net.Destination) bool {
-	domain := result.Domain()
+func normalizeDNSDomain(domain string) (string, bool) {
+	domain = strings.TrimSpace(domain)
+	domain = strings.TrimSuffix(domain, ".")
+
 	if domain == "" {
+		return "", false
+	}
+	if len(domain) > 253 {
+		return "", false
+	}
+	if strings.HasPrefix(domain, ".") || strings.Contains(domain, "..") {
+		return "", false
+	}
+	if strings.ContainsAny(domain, " \t\r\n/\\:") {
+		return "", false
+	}
+
+	labels := strings.Split(domain, ".")
+	for _, label := range labels {
+		if label == "" || len(label) > 63 {
+			return "", false
+		}
+		if strings.HasPrefix(label, "-") || strings.HasSuffix(label, "-") {
+			return "", false
+		}
+	}
+
+	return domain, true
+}
+
+func normalizeDestination(destination net.Destination) (net.Destination, bool) {
+	if !destination.Address.Family().IsDomain() {
+		return destination, true
+	}
+
+	domain, ok := normalizeDNSDomain(destination.Address.Domain())
+	if !ok {
+		return destination, false
+	}
+
+	destination.Address = net.ParseAddress(domain)
+	return destination, true
+}
+
+func (d *DefaultDispatcher) shouldOverride(ctx context.Context, result SniffResult, request session.SniffingRequest, destination net.Destination) bool {
+	domain, ok := normalizeDNSDomain(result.Domain())
+	if !ok {
 		return false
 	}
 	if request.ExcludeForDomain != nil && request.ExcludeForDomain.MatchAny(strings.ToLower(domain)) {
@@ -276,6 +320,12 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 	if !destination.IsValid() {
 		panic("Dispatcher: Invalid destination.")
 	}
+	var ok bool
+	destination, ok = normalizeDestination(destination)
+	if !ok {
+		errors.LogWarning(ctx, "reject invalid destination domain: ", destination)
+		return nil, errors.New("invalid destination domain: ", destination)
+	}
 	outbounds := session.OutboundsFromContext(ctx)
 	if len(outbounds) == 0 {
 		outbounds = []*session.Outbound{{}}
@@ -307,7 +357,11 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 				content.Protocol = result.Protocol()
 			}
 			if err == nil && d.shouldOverride(ctx, result, sniffingRequest, destination) {
-				domain := result.Domain()
+				domain, ok := normalizeDNSDomain(result.Domain())
+				if !ok {
+					d.routedDispatch(ctx, outbound, destination, l, content.Protocol)
+					return
+				}
 				errors.LogInfo(ctx, "sniffed domain: ", domain)
 				destination.Address = net.ParseAddress(domain)
 				protocol := result.Protocol()
@@ -334,6 +388,14 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 func (d *DefaultDispatcher) DispatchLink(ctx context.Context, destination net.Destination, outbound *transport.Link) error {
 	if !destination.IsValid() {
 		return errors.New("Dispatcher: Invalid destination.")
+	}
+	var ok bool
+	destination, ok = normalizeDestination(destination)
+	if !ok {
+		errors.LogWarning(ctx, "reject invalid destination domain: ", destination)
+		common.Close(outbound.Writer)
+		common.Interrupt(outbound.Reader)
+		return errors.New("invalid destination domain: ", destination)
 	}
 	outbounds := session.OutboundsFromContext(ctx)
 	if len(outbounds) == 0 {
@@ -428,7 +490,11 @@ func (d *DefaultDispatcher) DispatchLink(ctx context.Context, destination net.De
 			content.Protocol = result.Protocol()
 		}
 		if err == nil && d.shouldOverride(ctx, result, sniffingRequest, destination) {
-			domain := result.Domain()
+			domain, ok := normalizeDNSDomain(result.Domain())
+			if !ok {
+				d.routedDispatch(ctx, outbound, destination, limit, content.Protocol)
+				return nil
+			}
 			errors.LogInfo(ctx, "sniffed domain: ", domain)
 			destination.Address = net.ParseAddress(domain)
 			protocol := result.Protocol()
