@@ -97,9 +97,10 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 
 		// Update limiter
 		if len(c.Options.Name) == 0 {
+			oldTag := c.tag
 			c.tag = c.buildNodeTag(newN)
 			// Remove Old limiter
-			limiter.DeleteLimiter(c.tag)
+			limiter.DeleteLimiter(oldTag)
 			// Add new Limiter
 			l := limiter.AddLimiter(c.tag, &c.LimitConfig, c.userList, newA)
 			c.limiter = l

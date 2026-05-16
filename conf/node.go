@@ -40,10 +40,9 @@ func (n *NodeConfig) UnmarshalJSON(data []byte) (err error) {
 		return err
 	}
 	if len(rn.Include) != 0 {
-		file, _ := strings.CutPrefix(rn.Include, ":")
-		switch file {
-		case "http", "https":
-			rsp, err := http.Get(file)
+		switch {
+		case strings.HasPrefix(rn.Include, "http://"), strings.HasPrefix(rn.Include, "https://"):
+			rsp, err := http.Get(rn.Include)
 			if err != nil {
 				return err
 			}
