@@ -21,14 +21,18 @@ func (t *Task) Start(first bool) error {
 	}
 	t.running = true
 	t.stop = make(chan struct{})
+	stop := t.stop
 	t.access.Unlock()
 
 	go func() {
 		if first {
 			if err := t.Execute(); err != nil {
 				t.access.Lock()
-				t.running = false
-				close(t.stop)
+				if t.running && t.stop == stop {
+					t.running = false
+					close(stop)
+					t.stop = nil
+				}
 				t.access.Unlock()
 				return
 			}
@@ -37,14 +41,17 @@ func (t *Task) Start(first bool) error {
 		for {
 			select {
 			case <-time.After(t.Interval):
-			case <-t.stop:
+			case <-stop:
 				return
 			}
 
 			if err := t.Execute(); err != nil {
 				t.access.Lock()
-				t.running = false
-				close(t.stop)
+				if t.running && t.stop == stop {
+					t.running = false
+					close(stop)
+					t.stop = nil
+				}
 				t.access.Unlock()
 				return
 			}
