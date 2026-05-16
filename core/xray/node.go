@@ -63,7 +63,7 @@ func (c *Xray) addOutbound(config *core.OutboundHandlerConfig) error {
 	}
 	handler, ok := rawHandler.(outbound.Handler)
 	if !ok {
-		return fmt.Errorf("not an InboundHandler: %s", err)
+		return fmt.Errorf("not an OutboundHandler: %s", err)
 	}
 	if err := c.ohm.AddHandler(context.Background(), handler); err != nil {
 		return err
