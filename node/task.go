@@ -105,6 +105,9 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 			l := limiter.AddLimiter(newN.Type, c.tag, &c.LimitConfig, c.userList, newA)
 			c.limiter = l
 		}
+		if c.limiter != nil {
+			c.limiter.Nodetype = newN.Type
+		}
 		// update alive list
 		if newA != nil {
 			c.limiter.AliveList = newA
