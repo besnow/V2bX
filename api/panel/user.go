@@ -135,12 +135,16 @@ func (c *Client) GetUserAlive() (map[int]int, error) {
 	r, err := c.client.R().
 		ForceContentType("application/json").
 		Get(path)
-	if err != nil || r.StatusCode() >= 399 {
+	if err != nil {
 		c.AliveMap.Alive = make(map[int]int)
 		return c.AliveMap.Alive, nil
 	}
 	if r == nil || r.RawResponse == nil {
 		fmt.Printf("received nil response or raw response")
+		c.AliveMap.Alive = make(map[int]int)
+		return c.AliveMap.Alive, nil
+	}
+	if r.StatusCode() >= 399 {
 		c.AliveMap.Alive = make(map[int]int)
 		return c.AliveMap.Alive, nil
 	}
