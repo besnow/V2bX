@@ -186,7 +186,7 @@ func (c *Client) ReportNodeOnlineUsers(data *map[int][]string) error {
 	err = c.checkResponse(r, path, err)
 
 	if err != nil {
-		return nil
+		return err
 	}
 
 	return nil

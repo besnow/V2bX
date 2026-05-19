@@ -44,14 +44,18 @@ func (c *Controller) reportUserTrafficTask() (err error) {
 			// json structure: { UID1:["ip1","ip2"],UID2:["ip3","ip4"] }
 			data[onlineuser.UID] = append(data[onlineuser.UID], onlineuser.IP)
 		}
-		if err = c.apiClient.ReportNodeOnlineUsers(&data); err != nil {
-			log.WithFields(log.Fields{
-				"tag": c.tag,
-				"err": err,
-			}).Info("Report online users failed")
+		if len(data) != 0 {
+			if err = c.apiClient.ReportNodeOnlineUsers(&data); err != nil {
+				log.WithFields(log.Fields{
+					"tag": c.tag,
+					"err": err,
+				}).Info("Report online users failed")
+			} else {
+				log.WithField("tag", c.tag).Infof("Total %d online users, %d Reported", len(*onlineDevice), len(result))
+				log.WithField("tag", c.tag).Debugf("Online users: %+v", data)
+			}
 		} else {
-			log.WithField("tag", c.tag).Infof("Total %d online users, %d Reported", len(*onlineDevice), len(result))
-			log.WithField("tag", c.tag).Debugf("Online users: %+v", data)
+			log.WithField("tag", c.tag).Debugf("Total %d online users, 0 Reported after DeviceOnlineMinTraffic filter", len(*onlineDevice))
 		}
 	}
 
