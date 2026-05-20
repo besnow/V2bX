@@ -89,7 +89,7 @@ func DeleteLimiter(tag string) {
 	limitLock.Unlock()
 }
 
-func (l *Limiter) UpdateUser(tag string, added []panel.UserInfo, deleted []panel.UserInfo) {
+func (l *Limiter) UpdateUser(tag string, added, deleted, modified []panel.UserInfo) {
 	for i := range deleted {
 		l.UserLimitInfo.Delete(format.UserTag(tag, deleted[i].Uuid))
 		l.UserOnlineIP.Delete(format.UserTag(tag, deleted[i].Uuid))
@@ -111,6 +111,32 @@ func (l *Limiter) UpdateUser(tag string, added []panel.UserInfo, deleted []panel
 		userLimit.OverLimit = false
 		l.UserLimitInfo.Store(format.UserTag(tag, added[i].Uuid), userLimit)
 		l.UUIDtoUID[added[i].Uuid] = added[i].Id
+	}
+	for i := range modified {
+		tagUUID := format.UserTag(tag, modified[i].Uuid)
+		if v, ok := l.UserLimitInfo.Load(tagUUID); ok {
+			userLimit := v.(*UserLimitInfo)
+			if userLimit.SpeedLimit != modified[i].SpeedLimit {
+				l.SpeedLimiter.Delete(tagUUID)
+			}
+			userLimit.UID = modified[i].Id
+			userLimit.SpeedLimit = modified[i].SpeedLimit
+			userLimit.DeviceLimit = modified[i].DeviceLimit
+		} else {
+			userLimit := &UserLimitInfo{
+				UID: modified[i].Id,
+			}
+			if modified[i].SpeedLimit != 0 {
+				userLimit.SpeedLimit = modified[i].SpeedLimit
+				userLimit.ExpireTime = 0
+			}
+			if modified[i].DeviceLimit != 0 {
+				userLimit.DeviceLimit = modified[i].DeviceLimit
+			}
+			userLimit.OverLimit = false
+			l.UserLimitInfo.Store(tagUUID, userLimit)
+		}
+		l.UUIDtoUID[modified[i].Uuid] = modified[i].Id
 	}
 }
 
