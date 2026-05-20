@@ -49,6 +49,12 @@ func TestCompareUserList(t *testing.T) {
 			old:  []panel.UserInfo{{Uuid: "u1", Id: 1, SpeedLimit: 10, DeviceLimit: 2}},
 			new:  []panel.UserInfo{{Uuid: "u1", Id: 1, SpeedLimit: 10, DeviceLimit: 2}},
 		},
+
+		{
+			name: "uuid same id changed only not modified",
+			old:  []panel.UserInfo{{Uuid: "u1", Id: 1, SpeedLimit: 10, DeviceLimit: 2}},
+			new:  []panel.UserInfo{{Uuid: "u1", Id: 2, SpeedLimit: 10, DeviceLimit: 2}},
+		},
 	}
 
 	for _, tt := range tests {
