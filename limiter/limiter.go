@@ -34,12 +34,10 @@ type Limiter struct {
 }
 
 type UserLimitInfo struct {
-	UID               int
-	SpeedLimit        int
-	DeviceLimit       int
-	DynamicSpeedLimit int
-	ExpireTime        int64
-	OverLimit         bool
+	UID         int
+	SpeedLimit  int
+	DeviceLimit int
+	OverLimit   bool
 }
 
 func AddLimiter(nodetype string, tag string, l *conf.LimitConfig, users []panel.UserInfo, aliveList map[int]int) *Limiter {
@@ -103,7 +101,6 @@ func (l *Limiter) UpdateUser(tag string, added, deleted, modified []panel.UserIn
 		}
 		if added[i].SpeedLimit != 0 {
 			userLimit.SpeedLimit = added[i].SpeedLimit
-			userLimit.ExpireTime = 0
 		}
 		if added[i].DeviceLimit != 0 {
 			userLimit.DeviceLimit = added[i].DeviceLimit
@@ -128,7 +125,6 @@ func (l *Limiter) UpdateUser(tag string, added, deleted, modified []panel.UserIn
 			}
 			if modified[i].SpeedLimit != 0 {
 				userLimit.SpeedLimit = modified[i].SpeedLimit
-				userLimit.ExpireTime = 0
 			}
 			if modified[i].DeviceLimit != 0 {
 				userLimit.DeviceLimit = modified[i].DeviceLimit
@@ -138,17 +134,6 @@ func (l *Limiter) UpdateUser(tag string, added, deleted, modified []panel.UserIn
 		}
 		l.UUIDtoUID[modified[i].Uuid] = modified[i].Id
 	}
-}
-
-func (l *Limiter) UpdateDynamicSpeedLimit(tag, uuid string, limit int, expire time.Time) error {
-	if v, ok := l.UserLimitInfo.Load(format.UserTag(tag, uuid)); ok {
-		info := v.(*UserLimitInfo)
-		info.DynamicSpeedLimit = limit
-		info.ExpireTime = expire.Unix()
-	} else {
-		return errors.New("not found")
-	}
-	return nil
 }
 
 func (l *Limiter) CheckLimit(taguuid string, ip string, isTcp bool, noSSUDP bool) (Bucket *ratelimit.Bucket, Reject bool) {
@@ -164,17 +149,7 @@ func (l *Limiter) CheckLimit(taguuid string, ip string, isTcp bool, noSSUDP bool
 		u := v.(*UserLimitInfo)
 		deviceLimit = u.DeviceLimit
 		uid = u.UID
-		if u.ExpireTime < time.Now().Unix() && u.ExpireTime != 0 {
-			if u.SpeedLimit != 0 {
-				userLimit = u.SpeedLimit
-				u.DynamicSpeedLimit = 0
-				u.ExpireTime = 0
-			} else {
-				l.UserLimitInfo.Delete(taguuid)
-			}
-		} else {
-			userLimit = determineSpeedLimit(u.SpeedLimit, u.DynamicSpeedLimit)
-		}
+		userLimit = u.SpeedLimit
 	} else {
 		return nil, true
 	}
