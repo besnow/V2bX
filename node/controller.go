@@ -13,19 +13,17 @@ import (
 )
 
 type Controller struct {
-	server                    vCore.Core
-	apiClient                 *panel.Client
-	tag                       string
-	limiter                   *limiter.Limiter
-	traffic                   map[string]int64
-	userList                  []panel.UserInfo
-	aliveMap                  map[int]int
-	info                      *panel.NodeInfo
-	nodeInfoMonitorPeriodic   *task.Task
-	userReportPeriodic        *task.Task
-	renewCertPeriodic         *task.Task
-	dynamicSpeedLimitPeriodic *task.Task
-	onlineIpReportPeriodic    *task.Task
+	server                  vCore.Core
+	apiClient               *panel.Client
+	tag                     string
+	limiter                 *limiter.Limiter
+	userList                []panel.UserInfo
+	aliveMap                map[int]int
+	info                    *panel.NodeInfo
+	nodeInfoMonitorPeriodic *task.Task
+	userReportPeriodic      *task.Task
+	renewCertPeriodic       *task.Task
+	onlineIpReportPeriodic  *task.Task
 	*conf.Options
 }
 
@@ -108,9 +106,6 @@ func (c *Controller) Close() error {
 	}
 	if c.renewCertPeriodic != nil {
 		c.renewCertPeriodic.Close()
-	}
-	if c.dynamicSpeedLimitPeriodic != nil {
-		c.dynamicSpeedLimitPeriodic.Close()
 	}
 	if c.onlineIpReportPeriodic != nil {
 		c.onlineIpReportPeriodic.Close()

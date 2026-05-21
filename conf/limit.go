@@ -1,14 +1,12 @@
 package conf
 
 type LimitConfig struct {
-	EnableRealtime          bool                     `json:"EnableRealtime"`
-	SpeedLimit              int                      `json:"SpeedLimit"`
-	IPLimit                 int                      `json:"DeviceLimit"`
-	ConnLimit               int                      `json:"ConnLimit"`
-	EnableIpRecorder        bool                     `json:"EnableIpRecorder"`
-	IpRecorderConfig        *IpReportConfig          `json:"IpRecorderConfig"`
-	EnableDynamicSpeedLimit bool                     `json:"EnableDynamicSpeedLimit"`
-	DynamicSpeedLimitConfig *DynamicSpeedLimitConfig `json:"DynamicSpeedLimitConfig"`
+	EnableRealtime   bool            `json:"EnableRealtime"`
+	SpeedLimit       int             `json:"SpeedLimit"`
+	IPLimit          int             `json:"DeviceLimit"`
+	ConnLimit        int             `json:"ConnLimit"`
+	EnableIpRecorder bool            `json:"EnableIpRecorder"`
+	IpRecorderConfig *IpReportConfig `json:"IpRecorderConfig"`
 }
 
 type RecorderConfig struct {
@@ -30,11 +28,4 @@ type IpReportConfig struct {
 	RecorderConfig *RecorderConfig `json:"RecorderConfig"`
 	RedisConfig    *RedisConfig    `json:"RedisConfig"`
 	EnableIpSync   bool            `json:"EnableIpSync"`
-}
-
-type DynamicSpeedLimitConfig struct {
-	Periodic   int   `json:"Periodic"`
-	Traffic    int64 `json:"Traffic"`
-	SpeedLimit int   `json:"SpeedLimit"`
-	ExpireTime int   `json:"ExpireTime"`
 }
