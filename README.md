@@ -6,12 +6,11 @@
 
 ## 项目定位
 
-- 仅维护 xray-only 版本。
-- 已移除 V2bX 外部 sing-box core。
-- 已移除 V2bX 外部 hysteria / hysteria2 core。
-- Xray core 使用 [`wyx2685/Xray-core`](https://github.com/wyx2685/Xray-core)，通过 `go.mod` 中的 `replace github.com/xtls/xray-core => github.com/wyx2685/xray-core` 指向。
-- V2Board API 对接、用户同步、流量上报、在线 IP / 在线用户上报等节点逻辑保持为 V2bX 节点侧逻辑。
-- Xray-core 自身支持的协议、传输、fallback、Reality、XHTTP、gRPC、路由、DNS 等能力应完整保留；这里移除的是 V2bX 外部独立 core，不是删除 Xray-core 内部实现。
+- Besnow V2bX 是 xray-only fork。
+- 这里的 xray-only 仅表示运行核心只使用 Xray core，不代表协议能力收窄。
+- 不恢复 V2bX 外部 sing-box / hysteria / hysteria2 core。
+- Xray core 使用 [`wyx2685/Xray-core`](https://github.com/wyx2685/Xray-core)，其内部能力（如 anytls、tuic、wireguard、singquic、xhttp、grpc、websocket、reality、routing、DNS、stats、policy 等）按核心实现保留。
+- V2bX 外层适配以“尽量实现”为目标，生产可用性以灰度验证结果为准。
 
 ## 构建
 
@@ -37,7 +36,7 @@ go build -v -o build_assets/V2bX -trimpath -ldflags "-X 'github.com/InazumaV/V2b
 ## 免责声明
 
 - 此项目为 Besnow 自用 fork，不承诺向后兼容。
-- 不添加未经验证的功能承诺；实际可用能力以当前代码和所使用的 Xray-core 为准。
+- 不添加未经灰度验证的生产可用承诺；实际可用能力以当前代码和所使用的 Xray-core 为准。
 - 使用本项目造成的任何后果由使用者自行承担。
 
 ## Thanks
