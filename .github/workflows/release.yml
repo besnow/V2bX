@@ -126,7 +126,11 @@ jobs:
         run: |
           echo "version: $version"
           mkdir -p build_assets
-          go build -v -o build_assets/V2bX -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
+          ldflags="-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
+          if [ "$GOOS" = "android" ]; then
+            ldflags="$ldflags -checklinkname=0"
+          fi
+          go build -v -o build_assets/V2bX -trimpath -ldflags "$ldflags"
 
       - name: Build Mips softfloat V2bX
         if: matrix.goarch == 'mips' || matrix.goarch == 'mipsle'
