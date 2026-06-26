@@ -82,12 +82,16 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 				AcceptProxyProtocol: option.XrayOptions.EnableProxyProtocol,
 			} //Enable proxy protocol
 		}
+		setTrustedXForwardedFor(in.StreamSetting)
 	default:
-		socketConfig := &coreConf.SocketConfig{
-			AcceptProxyProtocol: option.XrayOptions.EnableProxyProtocol,
-			TFO:                 option.XrayOptions.EnableTFO,
-		} //Enable proxy protocol
+		socketConfig := in.StreamSetting.SocketSettings
+		if socketConfig == nil {
+			socketConfig = &coreConf.SocketConfig{}
+		}
+		socketConfig.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
+		socketConfig.TFO = option.XrayOptions.EnableTFO
 		in.StreamSetting.SocketSettings = socketConfig
+		setTrustedXForwardedFor(in.StreamSetting)
 	}
 	// Set TLS or Reality settings
 	switch nodeInfo.Security {
@@ -149,6 +153,15 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 	}
 	in.Tag = tag
 	return in.Build()
+}
+
+func setTrustedXForwardedFor(streamSetting *coreConf.StreamConfig) {
+	if streamSetting.SocketSettings == nil {
+		streamSetting.SocketSettings = &coreConf.SocketConfig{}
+	}
+	if len(streamSetting.SocketSettings.TrustedXForwardedFor) == 0 {
+		streamSetting.SocketSettings.TrustedXForwardedFor = []string{"X-Forwarded-For"}
+	}
 }
 
 func buildV2ray(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
