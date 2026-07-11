@@ -118,6 +118,7 @@ func getCore(c *conf.XrayConfig) *core.Instance {
 		if err != nil {
 			log.WithField("err", err).Panic("Failed to read Custom Inbound config file")
 		} else {
+			data = migrateTUICInboundConfigIDs(data)
 			if err = json.Unmarshal(data, &coreCustomInboundConfig); err != nil {
 				log.WithField("err", err).Panic("Failed to unmarshal Custom Inbound config")
 			}
@@ -138,6 +139,7 @@ func getCore(c *conf.XrayConfig) *core.Instance {
 		if err != nil {
 			log.WithField("err", err).Panic("Failed to read Custom Outbound config file")
 		} else {
+			data = migrateTUICOutboundConfigIDs(data)
 			if err = json.Unmarshal(data, &coreCustomOutboundConfig); err != nil {
 				log.WithField("err", err).Panic("Failed to unmarshal Custom Outbound config")
 			}
@@ -177,6 +179,67 @@ func getCore(c *conf.XrayConfig) *core.Instance {
 	}
 	log.Info("Xray Core Version: ", core.Version())
 	return server
+}
+
+func migrateTUICInboundConfigIDs(data []byte) []byte {
+	return migrateTUICConfigIDs(data, []string{"users", "clients"})
+}
+
+func migrateTUICOutboundConfigIDs(data []byte) []byte {
+	return migrateTUICConfigIDs(data, []string{"servers"})
+}
+
+func migrateTUICConfigIDs(data []byte, accountListKeys []string) []byte {
+	var configs []map[string]interface{}
+	if err := json.Unmarshal(data, &configs); err != nil {
+		return data
+	}
+	changed := false
+	for _, config := range configs {
+		protocol, _ := config["protocol"].(string)
+		if protocol != "tuic" {
+			continue
+		}
+		settings, ok := config["settings"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if migrateTUICAccountID(settings) {
+			changed = true
+		}
+		for _, key := range accountListKeys {
+			accounts, ok := settings[key].([]interface{})
+			if !ok {
+				continue
+			}
+			for _, account := range accounts {
+				accountMap, ok := account.(map[string]interface{})
+				if ok && migrateTUICAccountID(accountMap) {
+					changed = true
+				}
+			}
+		}
+	}
+	if !changed {
+		return data
+	}
+	updated, err := json.Marshal(configs)
+	if err != nil {
+		return data
+	}
+	return updated
+}
+
+func migrateTUICAccountID(account map[string]interface{}) bool {
+	uuid, hasUUID := account["uuid"]
+	if !hasUUID {
+		return false
+	}
+	if _, hasID := account["id"]; !hasID {
+		account["id"] = uuid
+	}
+	delete(account, "uuid")
+	return true
 }
 
 // Start the Xray
