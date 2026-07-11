@@ -118,6 +118,7 @@ func getCore(c *conf.XrayConfig) *core.Instance {
 		if err != nil {
 			log.WithField("err", err).Panic("Failed to read Custom Inbound config file")
 		} else {
+			data = migrateTUICInboundConfig(data)
 			if err = json.Unmarshal(data, &coreCustomInboundConfig); err != nil {
 				log.WithField("err", err).Panic("Failed to unmarshal Custom Inbound config")
 			}
@@ -177,6 +178,60 @@ func getCore(c *conf.XrayConfig) *core.Instance {
 	}
 	log.Info("Xray Core Version: ", core.Version())
 	return server
+}
+
+func migrateTUICInboundConfig(data []byte) []byte {
+	var inbounds []map[string]interface{}
+	if err := json.Unmarshal(data, &inbounds); err != nil {
+		return data
+	}
+	changed := false
+	for _, inbound := range inbounds {
+		protocol, _ := inbound["protocol"].(string)
+		if protocol != "tuic" {
+			continue
+		}
+		settings, ok := inbound["settings"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if migrateTUICAccountID(settings) {
+			changed = true
+		}
+		for _, key := range []string{"users", "clients"} {
+			accounts, ok := settings[key].([]interface{})
+			if !ok {
+				continue
+			}
+			for _, account := range accounts {
+				accountMap, ok := account.(map[string]interface{})
+				if ok && migrateTUICAccountID(accountMap) {
+					changed = true
+				}
+			}
+		}
+	}
+	if !changed {
+		return data
+	}
+	updated, err := json.Marshal(inbounds)
+	if err != nil {
+		return data
+	}
+	return updated
+}
+
+func migrateTUICAccountID(account map[string]interface{}) bool {
+	if _, hasID := account["id"]; hasID {
+		return false
+	}
+	uuid, hasUUID := account["uuid"]
+	if !hasUUID {
+		return false
+	}
+	account["id"] = uuid
+	delete(account, "uuid")
+	return true
 }
 
 // Start the Xray
