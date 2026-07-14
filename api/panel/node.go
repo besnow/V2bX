@@ -40,11 +40,12 @@ type NodeInfo struct {
 }
 
 type CommonNode struct {
-	Host       string      `json:"host"`
-	ServerPort int         `json:"server_port"`
-	ServerName string      `json:"server_name"`
-	Routes     []Route     `json:"routes"`
-	BaseConfig *BaseConfig `json:"base_config"`
+	Host                 string      `json:"host"`
+	ServerPort           int         `json:"server_port"`
+	ServerName           string      `json:"server_name"`
+	Routes               []Route     `json:"routes"`
+	BaseConfig           *BaseConfig `json:"base_config"`
+	TrustedXForwardedFor []string    `json:"trusted_x_forwarded_for"`
 }
 
 type Route struct {
