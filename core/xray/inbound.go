@@ -101,10 +101,7 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 		if dest == "" {
 			dest = v.TlsSettings.ServerName
 		}
-		xver := v.TlsSettings.Xver
-		if xver == 0 {
-			xver = v.RealityConfig.Xver
-		}
+		xver := realityXver(v.TlsSettings.Xver, v.RealityConfig.Xver)
 		d, err := json.Marshal(fmt.Sprintf(
 			"%s:%s",
 			dest,
@@ -136,9 +133,16 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 	return in.Build()
 }
 
+func realityXver(tlsXver, configXver uint64) uint64 {
+	if tlsXver != 0 {
+		return tlsXver
+	}
+	return configXver
+}
+
 func isHTTPTransport(network string) bool {
 	switch network {
-	case "ws", "grpc", "httpupgrade", "splithttp":
+	case "ws", "grpc", "httpupgrade", "splithttp", "xhttp":
 		return true
 	default:
 		return false
@@ -162,6 +166,18 @@ func setTrustedXForwardedFor(streamSetting *coreConf.StreamConfig, trustedXFF []
 	}
 	if len(streamSetting.SocketSettings.TrustedXForwardedFor) == 0 {
 		streamSetting.SocketSettings.TrustedXForwardedFor = []string{"X-Forwarded-For"}
+	}
+}
+
+func disableTCPProxyProtocol(tcpSettings *coreConf.TCPConfig) {
+	if tcpSettings != nil {
+		tcpSettings.AcceptProxyProtocol = false
+	}
+}
+
+func disableWSProxyProtocol(wsSettings *coreConf.WebSocketConfig) {
+	if wsSettings != nil {
+		wsSettings.AcceptProxyProtocol = false
 	}
 }
 
@@ -235,11 +251,13 @@ func buildV2ray(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreCon
 		if err != nil {
 			return fmt.Errorf("unmarshal tcp settings error: %s", err)
 		}
+		disableTCPProxyProtocol(inbound.StreamSetting.TCPSettings)
 	case "ws":
 		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.WSSettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal ws settings error: %s", err)
 		}
+		disableWSProxyProtocol(inbound.StreamSetting.WSSettings)
 	case "grpc":
 		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.GRPCSettings)
 		if err != nil {
@@ -293,11 +311,13 @@ func buildTrojan(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreCo
 		if err != nil {
 			return fmt.Errorf("unmarshal tcp settings error: %s", err)
 		}
+		disableTCPProxyProtocol(inbound.StreamSetting.TCPSettings)
 	case "ws":
 		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.WSSettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal ws settings error: %s", err)
 		}
+		disableWSProxyProtocol(inbound.StreamSetting.WSSettings)
 	case "grpc":
 		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.GRPCSettings)
 		if err != nil {
