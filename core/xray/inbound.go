@@ -64,34 +64,11 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 		sniffingConfig.Enabled = false
 	}
 	in.SniffingConfig = sniffingConfig
-	switch network {
-	case "tcp":
-		if in.StreamSetting.TCPSettings != nil {
-			in.StreamSetting.TCPSettings.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
-		} else {
-			tcpSetting := &coreConf.TCPConfig{
-				AcceptProxyProtocol: option.XrayOptions.EnableProxyProtocol,
-			} //Enable proxy protocol
-			in.StreamSetting.TCPSettings = tcpSetting
-		}
-	case "ws":
-		if in.StreamSetting.WSSettings != nil {
-			in.StreamSetting.WSSettings.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
-		} else {
-			in.StreamSetting.WSSettings = &coreConf.WebSocketConfig{
-				AcceptProxyProtocol: option.XrayOptions.EnableProxyProtocol,
-			} //Enable proxy protocol
-		}
-		setTrustedXForwardedFor(in.StreamSetting)
-	default:
-		socketConfig := in.StreamSetting.SocketSettings
-		if socketConfig == nil {
-			socketConfig = &coreConf.SocketConfig{}
-		}
-		socketConfig.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
-		socketConfig.TFO = option.XrayOptions.EnableTFO
-		in.StreamSetting.SocketSettings = socketConfig
-		setTrustedXForwardedFor(in.StreamSetting)
+	if option.XrayOptions.EnableTFO {
+		setTFO(in.StreamSetting)
+	}
+	if isHTTPTransport(network) {
+		setTrustedXForwardedFor(in.StreamSetting, nodeInfo.Common.TrustedXForwardedFor)
 	}
 	// Set TLS or Reality settings
 	switch nodeInfo.Security {
@@ -136,13 +113,17 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 			return nil, fmt.Errorf("marshal reality dest error: %s", err)
 		}
 		mtd, _ := time.ParseDuration(v.RealityConfig.MaxTimeDiff)
+		minClientVer := v.RealityConfig.MinClientVer
+		if minClientVer == "" {
+			minClientVer = "0.0.1"
+		}
 		in.StreamSetting.REALITYSettings = &coreConf.REALITYConfig{
 			Dest:         d,
 			Xver:         xver,
 			Show:         false,
 			ServerNames:  []string{v.TlsSettings.ServerName},
 			PrivateKey:   v.TlsSettings.PrivateKey,
-			MinClientVer: v.RealityConfig.MinClientVer,
+			MinClientVer: minClientVer,
 			MaxClientVer: v.RealityConfig.MaxClientVer,
 			MaxTimeDiff:  uint64(mtd.Microseconds()),
 			ShortIds:     []string{v.TlsSettings.ShortId},
@@ -155,9 +136,29 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 	return in.Build()
 }
 
-func setTrustedXForwardedFor(streamSetting *coreConf.StreamConfig) {
+func isHTTPTransport(network string) bool {
+	switch network {
+	case "ws", "grpc", "httpupgrade", "splithttp":
+		return true
+	default:
+		return false
+	}
+}
+
+func setTFO(streamSetting *coreConf.StreamConfig) {
 	if streamSetting.SocketSettings == nil {
 		streamSetting.SocketSettings = &coreConf.SocketConfig{}
+	}
+	streamSetting.SocketSettings.TFO = true
+}
+
+func setTrustedXForwardedFor(streamSetting *coreConf.StreamConfig, trustedXFF []string) {
+	if streamSetting.SocketSettings == nil {
+		streamSetting.SocketSettings = &coreConf.SocketConfig{}
+	}
+	if len(trustedXFF) > 0 {
+		streamSetting.SocketSettings.TrustedXForwardedFor = trustedXFF
+		return
 	}
 	if len(streamSetting.SocketSettings.TrustedXForwardedFor) == 0 {
 		streamSetting.SocketSettings.TrustedXForwardedFor = []string{"X-Forwarded-For"}
