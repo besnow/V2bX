@@ -1,11 +1,9 @@
 package xray
 
 import (
-	"encoding/json"
 	"reflect"
 	"testing"
 
-	"github.com/InazumaV/V2bX/api/panel"
 	"github.com/InazumaV/V2bX/conf"
 	coreConf "github.com/xtls/xray-core/infra/conf"
 )
@@ -89,28 +87,6 @@ func TestTFOIsPreservedWhenTrustedXForwardedForIsApplied(t *testing.T) {
 	}
 }
 
-func TestBuildV2rayForcesTCPProxyProtocolOff(t *testing.T) {
-	inbound := buildV2rayInbound(t, "tcp", `{"acceptProxyProtocol":true}`)
-
-	if inbound.StreamSetting.TCPSettings == nil {
-		t.Fatal("expected TCP settings to be parsed")
-	}
-	if inbound.StreamSetting.TCPSettings.AcceptProxyProtocol {
-		t.Fatal("expected TCP acceptProxyProtocol to be forced off")
-	}
-}
-
-func TestBuildV2rayForcesWSProxyProtocolOff(t *testing.T) {
-	inbound := buildV2rayInbound(t, "ws", `{"acceptProxyProtocol":true}`)
-
-	if inbound.StreamSetting.WSSettings == nil {
-		t.Fatal("expected WS settings to be parsed")
-	}
-	if inbound.StreamSetting.WSSettings.AcceptProxyProtocol {
-		t.Fatal("expected WS acceptProxyProtocol to be forced off")
-	}
-}
-
 func TestFallbackAndRealityXverArePreserved(t *testing.T) {
 	fallbacks, err := buildVlessFallbacks([]conf.FallBackConfigForXray{{Dest: "127.0.0.1:8080", ProxyProtocolVer: 2}})
 	if err != nil {
@@ -126,20 +102,4 @@ func TestFallbackAndRealityXverArePreserved(t *testing.T) {
 	if got := realityXver(0, 2); got != 2 {
 		t.Fatalf("expected RealityConfig Xver fallback, got %d", got)
 	}
-}
-
-func buildV2rayInbound(t *testing.T, network string, networkSettings string) *coreConf.InboundDetourConfig {
-	t.Helper()
-	inbound := &coreConf.InboundDetourConfig{}
-	nodeInfo := &panel.NodeInfo{
-		Type: "vless",
-		VAllss: &panel.VAllssNode{
-			Network:         network,
-			NetworkSettings: json.RawMessage(networkSettings),
-		},
-	}
-	if err := buildV2ray(&conf.Options{XrayOptions: conf.NewXrayOptions()}, nodeInfo, inbound); err != nil {
-		t.Fatalf("buildV2ray returned error: %v", err)
-	}
-	return inbound
 }

@@ -47,14 +47,15 @@ func NewXrayConfig() *XrayConfig {
 }
 
 type XrayOptions struct {
-	EnableDNS       bool                    `json:"EnableDNS"`
-	DNSType         string                  `json:"DNSType"`
-	EnableUot       bool                    `json:"EnableUot"`
-	EnableTFO       bool                    `json:"EnableTFO"`
-	DisableIVCheck  bool                    `json:"DisableIVCheck"`
-	DisableSniffing bool                    `json:"DisableSniffing"`
-	EnableFallback  bool                    `json:"EnableFallback"`
-	FallBackConfigs []FallBackConfigForXray `json:"FallBackConfigs"`
+	EnableProxyProtocol bool                    `json:"EnableProxyProtocol"`
+	EnableDNS           bool                    `json:"EnableDNS"`
+	DNSType             string                  `json:"DNSType"`
+	EnableUot           bool                    `json:"EnableUot"`
+	EnableTFO           bool                    `json:"EnableTFO"`
+	DisableIVCheck      bool                    `json:"DisableIVCheck"`
+	DisableSniffing     bool                    `json:"DisableSniffing"`
+	EnableFallback      bool                    `json:"EnableFallback"`
+	FallBackConfigs     []FallBackConfigForXray `json:"FallBackConfigs"`
 }
 
 type FallBackConfigForXray struct {
@@ -67,12 +68,13 @@ type FallBackConfigForXray struct {
 
 func NewXrayOptions() *XrayOptions {
 	return &XrayOptions{
-		EnableDNS:       false,
-		DNSType:         "AsIs",
-		EnableUot:       false,
-		EnableTFO:       false,
-		DisableIVCheck:  false,
-		DisableSniffing: false,
-		EnableFallback:  false,
+		EnableProxyProtocol: false,
+		EnableDNS:           false,
+		DNSType:             "AsIs",
+		EnableUot:           false,
+		EnableTFO:           false,
+		DisableIVCheck:      false,
+		DisableSniffing:     false,
+		EnableFallback:      false,
 	}
 }

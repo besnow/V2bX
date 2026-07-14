@@ -64,11 +64,35 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 		sniffingConfig.Enabled = false
 	}
 	in.SniffingConfig = sniffingConfig
-	if option.XrayOptions.EnableTFO {
-		setTFO(in.StreamSetting)
-	}
-	if isHTTPTransport(network) {
+	switch network {
+	case "tcp":
+		if in.StreamSetting.TCPSettings != nil {
+			in.StreamSetting.TCPSettings.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
+		} else {
+			in.StreamSetting.TCPSettings = &coreConf.TCPConfig{
+				AcceptProxyProtocol: option.XrayOptions.EnableProxyProtocol,
+			}
+		}
+	case "ws":
+		if in.StreamSetting.WSSettings != nil {
+			in.StreamSetting.WSSettings.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
+		} else {
+			in.StreamSetting.WSSettings = &coreConf.WebSocketConfig{
+				AcceptProxyProtocol: option.XrayOptions.EnableProxyProtocol,
+			}
+		}
 		setTrustedXForwardedFor(in.StreamSetting, nodeInfo.Common.TrustedXForwardedFor)
+	default:
+		socketConfig := in.StreamSetting.SocketSettings
+		if socketConfig == nil {
+			socketConfig = &coreConf.SocketConfig{}
+		}
+		socketConfig.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
+		socketConfig.TFO = option.XrayOptions.EnableTFO
+		in.StreamSetting.SocketSettings = socketConfig
+		if isHTTPTransport(network) {
+			setTrustedXForwardedFor(in.StreamSetting, nodeInfo.Common.TrustedXForwardedFor)
+		}
 	}
 	// Set TLS or Reality settings
 	switch nodeInfo.Security {
@@ -169,18 +193,6 @@ func setTrustedXForwardedFor(streamSetting *coreConf.StreamConfig, trustedXFF []
 	}
 }
 
-func disableTCPProxyProtocol(tcpSettings *coreConf.TCPConfig) {
-	if tcpSettings != nil {
-		tcpSettings.AcceptProxyProtocol = false
-	}
-}
-
-func disableWSProxyProtocol(wsSettings *coreConf.WebSocketConfig) {
-	if wsSettings != nil {
-		wsSettings.AcceptProxyProtocol = false
-	}
-}
-
 func buildV2ray(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
 	v := nodeInfo.VAllss
 	if nodeInfo.Type == "vless" {
@@ -251,13 +263,11 @@ func buildV2ray(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreCon
 		if err != nil {
 			return fmt.Errorf("unmarshal tcp settings error: %s", err)
 		}
-		disableTCPProxyProtocol(inbound.StreamSetting.TCPSettings)
 	case "ws":
 		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.WSSettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal ws settings error: %s", err)
 		}
-		disableWSProxyProtocol(inbound.StreamSetting.WSSettings)
 	case "grpc":
 		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.GRPCSettings)
 		if err != nil {
@@ -311,13 +321,11 @@ func buildTrojan(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreCo
 		if err != nil {
 			return fmt.Errorf("unmarshal tcp settings error: %s", err)
 		}
-		disableTCPProxyProtocol(inbound.StreamSetting.TCPSettings)
 	case "ws":
 		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.WSSettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal ws settings error: %s", err)
 		}
-		disableWSProxyProtocol(inbound.StreamSetting.WSSettings)
 	case "grpc":
 		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.GRPCSettings)
 		if err != nil {
