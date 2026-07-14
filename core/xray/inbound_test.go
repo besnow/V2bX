@@ -28,9 +28,7 @@ func TestXHTTPAndSplitHTTPSetTrustedXForwardedFor(t *testing.T) {
 			stream := &coreConf.StreamConfig{}
 			trusted := []string{"X-Real-IP"}
 
-			if isHTTPTransport(network) {
-				setTrustedXForwardedFor(stream, trusted)
-			}
+			applyInboundTransportOptions(stream, network, &conf.XrayOptions{}, trusted)
 
 			if !reflect.DeepEqual(stream.SocketSettings.TrustedXForwardedFor, trusted) {
 				t.Fatalf("expected %s Trusted XFF %v, got %v", network, trusted, stream.SocketSettings.TrustedXForwardedFor)
@@ -64,26 +62,78 @@ func TestTrustedXForwardedForDefaultsWhenEmpty(t *testing.T) {
 func TestTCPDoesNotSetTrustedXForwardedFor(t *testing.T) {
 	stream := &coreConf.StreamConfig{}
 
-	if isHTTPTransport("tcp") {
-		setTrustedXForwardedFor(stream, []string{"X-Real-IP"})
-	}
+	applyInboundTransportOptions(stream, "tcp", &conf.XrayOptions{}, []string{"X-Real-IP"})
 
 	if stream.SocketSettings != nil && len(stream.SocketSettings.TrustedXForwardedFor) > 0 {
 		t.Fatalf("expected tcp to leave Trusted XFF unset, got %v", stream.SocketSettings.TrustedXForwardedFor)
 	}
 }
 
-func TestTFOIsPreservedWhenTrustedXForwardedForIsApplied(t *testing.T) {
-	stream := &coreConf.StreamConfig{}
-
-	setTFO(stream)
-	setTrustedXForwardedFor(stream, []string{"X-Real-IP"})
-
-	if stream.SocketSettings == nil || stream.SocketSettings.TFO != true {
-		t.Fatalf("expected TFO to remain enabled, got %#v", stream.SocketSettings)
+func TestApplyInboundTransportOptionsProxyProtocol(t *testing.T) {
+	tests := []struct {
+		name                string
+		network             string
+		enableProxyProtocol bool
+	}{
+		{name: "tcp disabled", network: "tcp", enableProxyProtocol: false},
+		{name: "tcp enabled", network: "tcp", enableProxyProtocol: true},
+		{name: "ws disabled", network: "ws", enableProxyProtocol: false},
+		{name: "ws enabled", network: "ws", enableProxyProtocol: true},
+		{name: "grpc disabled", network: "grpc", enableProxyProtocol: false},
+		{name: "grpc enabled", network: "grpc", enableProxyProtocol: true},
+		{name: "xhttp disabled", network: "xhttp", enableProxyProtocol: false},
+		{name: "xhttp enabled", network: "xhttp", enableProxyProtocol: true},
 	}
-	if !reflect.DeepEqual(stream.SocketSettings.TrustedXForwardedFor, []string{"X-Real-IP"}) {
-		t.Fatalf("expected Trusted XFF to be set, got %v", stream.SocketSettings.TrustedXForwardedFor)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stream := &coreConf.StreamConfig{}
+			applyInboundTransportOptions(stream, tt.network, &conf.XrayOptions{EnableProxyProtocol: tt.enableProxyProtocol}, nil)
+
+			switch tt.network {
+			case "tcp":
+				if stream.TCPSettings == nil {
+					t.Fatal("expected TCP settings")
+				}
+				if stream.TCPSettings.AcceptProxyProtocol != tt.enableProxyProtocol {
+					t.Fatalf("expected TCP proxy protocol %v, got %v", tt.enableProxyProtocol, stream.TCPSettings.AcceptProxyProtocol)
+				}
+			case "ws":
+				if stream.WSSettings == nil {
+					t.Fatal("expected WS settings")
+				}
+				if stream.WSSettings.AcceptProxyProtocol != tt.enableProxyProtocol {
+					t.Fatalf("expected WS proxy protocol %v, got %v", tt.enableProxyProtocol, stream.WSSettings.AcceptProxyProtocol)
+				}
+			default:
+				if stream.SocketSettings == nil {
+					t.Fatal("expected socket settings")
+				}
+				if stream.SocketSettings.AcceptProxyProtocol != tt.enableProxyProtocol {
+					t.Fatalf("expected socket proxy protocol %v, got %v", tt.enableProxyProtocol, stream.SocketSettings.AcceptProxyProtocol)
+				}
+			}
+		})
+	}
+}
+
+func TestTrustedXForwardedForDoesNotOverwriteSocketOptions(t *testing.T) {
+	stream := &coreConf.StreamConfig{SocketSettings: &coreConf.SocketConfig{}}
+	trusted := []string{"X-Real-IP"}
+
+	applyInboundTransportOptions(stream, "xhttp", &conf.XrayOptions{EnableProxyProtocol: true, EnableTFO: true}, trusted)
+
+	if stream.SocketSettings == nil {
+		t.Fatal("expected socket settings")
+	}
+	if stream.SocketSettings.AcceptProxyProtocol != true {
+		t.Fatalf("expected ProxyProtocol to remain enabled, got %v", stream.SocketSettings.AcceptProxyProtocol)
+	}
+	if stream.SocketSettings.TFO != true {
+		t.Fatalf("expected TFO to remain enabled, got %#v", stream.SocketSettings.TFO)
+	}
+	if !reflect.DeepEqual(stream.SocketSettings.TrustedXForwardedFor, trusted) {
+		t.Fatalf("expected Trusted XFF %v, got %v", trusted, stream.SocketSettings.TrustedXForwardedFor)
 	}
 }
 

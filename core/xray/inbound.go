@@ -64,36 +64,7 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 		sniffingConfig.Enabled = false
 	}
 	in.SniffingConfig = sniffingConfig
-	switch network {
-	case "tcp":
-		if in.StreamSetting.TCPSettings != nil {
-			in.StreamSetting.TCPSettings.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
-		} else {
-			in.StreamSetting.TCPSettings = &coreConf.TCPConfig{
-				AcceptProxyProtocol: option.XrayOptions.EnableProxyProtocol,
-			}
-		}
-	case "ws":
-		if in.StreamSetting.WSSettings != nil {
-			in.StreamSetting.WSSettings.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
-		} else {
-			in.StreamSetting.WSSettings = &coreConf.WebSocketConfig{
-				AcceptProxyProtocol: option.XrayOptions.EnableProxyProtocol,
-			}
-		}
-		setTrustedXForwardedFor(in.StreamSetting, nodeInfo.Common.TrustedXForwardedFor)
-	default:
-		socketConfig := in.StreamSetting.SocketSettings
-		if socketConfig == nil {
-			socketConfig = &coreConf.SocketConfig{}
-		}
-		socketConfig.AcceptProxyProtocol = option.XrayOptions.EnableProxyProtocol
-		socketConfig.TFO = option.XrayOptions.EnableTFO
-		in.StreamSetting.SocketSettings = socketConfig
-		if isHTTPTransport(network) {
-			setTrustedXForwardedFor(in.StreamSetting, nodeInfo.Common.TrustedXForwardedFor)
-		}
-	}
+	applyInboundTransportOptions(in.StreamSetting, network, option.XrayOptions, nodeInfo.Common.TrustedXForwardedFor)
 	// Set TLS or Reality settings
 	switch nodeInfo.Security {
 	case panel.Tls:
@@ -157,6 +128,39 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 	return in.Build()
 }
 
+func applyInboundTransportOptions(streamSetting *coreConf.StreamConfig, network string, xrayOptions *conf.XrayOptions, trustedXFF []string) {
+	switch network {
+	case "tcp":
+		if streamSetting.TCPSettings != nil {
+			streamSetting.TCPSettings.AcceptProxyProtocol = xrayOptions.EnableProxyProtocol
+		} else {
+			streamSetting.TCPSettings = &coreConf.TCPConfig{
+				AcceptProxyProtocol: xrayOptions.EnableProxyProtocol,
+			}
+		}
+	case "ws":
+		if streamSetting.WSSettings != nil {
+			streamSetting.WSSettings.AcceptProxyProtocol = xrayOptions.EnableProxyProtocol
+		} else {
+			streamSetting.WSSettings = &coreConf.WebSocketConfig{
+				AcceptProxyProtocol: xrayOptions.EnableProxyProtocol,
+			}
+		}
+		setTrustedXForwardedFor(streamSetting, trustedXFF)
+	default:
+		socketConfig := streamSetting.SocketSettings
+		if socketConfig == nil {
+			socketConfig = &coreConf.SocketConfig{}
+		}
+		socketConfig.AcceptProxyProtocol = xrayOptions.EnableProxyProtocol
+		socketConfig.TFO = xrayOptions.EnableTFO
+		streamSetting.SocketSettings = socketConfig
+		if isHTTPTransport(network) {
+			setTrustedXForwardedFor(streamSetting, trustedXFF)
+		}
+	}
+}
+
 func realityXver(tlsXver, configXver uint64) uint64 {
 	if tlsXver != 0 {
 		return tlsXver
@@ -171,13 +175,6 @@ func isHTTPTransport(network string) bool {
 	default:
 		return false
 	}
-}
-
-func setTFO(streamSetting *coreConf.StreamConfig) {
-	if streamSetting.SocketSettings == nil {
-		streamSetting.SocketSettings = &coreConf.SocketConfig{}
-	}
-	streamSetting.SocketSettings.TFO = true
 }
 
 func setTrustedXForwardedFor(streamSetting *coreConf.StreamConfig, trustedXFF []string) {
